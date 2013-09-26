@@ -1,0 +1,4 @@
+*.tar.lzma
+*.gz
+*.sig
+*.asc
