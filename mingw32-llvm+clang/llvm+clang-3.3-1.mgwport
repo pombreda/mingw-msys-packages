@@ -1,0 +1,108 @@
+DESCRIPTION="The LLVM Core libraries provide a modern source- and target-independent optimizer, along with code generation support for many popular CPUs (as well as some less common ones!) These libraries are built around a well specified code representation known as the LLVM intermediate representation (/LLVM IR/). The LLVM Core libraries are well documented, and it is particularly easy to invent your own language (or port an existing compiler) to use LLVM as an optimizer and code generator.
+clang is an /LLVM native/ C/C++/Objective-C compiler, which aims to deliver amazingly fast compiles (e.g. about 3x faster than GCC when compiling Objective-C code in a debug configuration), extremely useful error and warning messages and to provide a platform for building great source level tools. The clang Static Analyzer is a tool that automatically finds bugs in your code, and is a great example of the sort of tool that can be built using the clang frontend as a library to parse C/C++ code."
+
+HOMEPAGE="http://llvm.org"
+SRC_URI="http://llvm.org/releases/${PV}/llvm-${PV}.src.tar.gz
+         http://llvm.org/releases/${PV}/llvm-${PV}.src.tar.gz.sig
+         http://llvm.org/releases/${PV}/cfe-${PV}.src.tar.gz
+         http://llvm.org/releases/${PV}/cfe-${PV}.src.tar.gz.sig
+         http://llvm.org/releases/${PV}/compiler-rt-${PV}.src.tar.gz
+         http://llvm.org/releases/${PV}/compiler-rt-${PV}.src.tar.gz.sig
+         http://llvm.org/releases/${PV}/test-suite-${PV}.src.tar.gz
+         http://llvm.org/releases/${PV}/test-suite-${PV}.src.tar.gz.sig"
+SRC_DIR="llvm-${PV}.src"
+
+PATCH_URI="2.9-implib.patch
+           fix-python-os-sysconf-failure.patch
+           hardcode-mingw-nm.patch
+           avoid_ulimit_call.patch"
+
+PKG_NAMES="llvm llvm-doc ${PN} libllvm libllvm-devel clang libclang libclang-devel clang-analyzer"
+PKG_COMPTYPES="bin doc lic dll-${PV} dev bin dll-${PV} dev bin"
+
+PKG_CONTENTS[0]="bin --exclude=clang.dll --exclude=LLVM*.dll
+                 --exclude=clang* --exclude=llvm-config*
+                 --exclude=c-*.exe --exclude=html*
+                 --exclude=scan-* --exclude=ps"
+PKG_CONTENTS[1]="share/doc/${PN}/${PV}
+                 --exclude share/doc/${PN}/${PV}/LICENSE.txt"
+PKG_CONTENTS[2]="share/doc/${PN}/${PV}/LICENSE.txt"
+PKG_CONTENTS[3]="bin/LLVM-${PV}*.dll"
+PKG_CONTENTS[4]="bin/llvm-config* include/llvm*
+                 lib/libLLVM* lib/libLTO*"
+PKG_CONTENTS[5]="bin/c-* --exclude=clang.dll bin/clang* lib/clang/ share/man/man1/clang*"
+PKG_CONTENTS[6]="bin/clang.dll"
+PKG_CONTENTS[7]="include/clang-c/ include/clang/ lib/libclang*"
+PKG_CONTENTS[8]="bin/scan-* share/man/man1/scan-* share/clang-analyzer"
+
+
+# Home brown method to check for build dependencies
+check_build_prerequesites()
+{
+  python --version &> /dev/null || ( echo "Found no python installation. Aborting!" && exit 1 )
+  gfortran --version &> /dev/null || ( echo "Found no gfortran installation. Aborting!" && exit 1 )
+  groff  --version &> /dev/null || ( echo "Found no groff  installation. Aborting!" && exit 1 )
+}
+
+src_compile() {
+
+  check_build_prerequesites
+
+  local ORIG_SRC=${S}/../../origsrc
+  # ugly hack, as we can't adjust the prep stage we have to copy the files here
+  # which messes up the diff
+  # See http://llvm.org/docs/GettingStarted.html
+  # ${S} is ../llvm+clang-3.3.1/src/llvm-3.3.src
+  if [ ! -d "${S}/tools/clang" ]; then
+    mv ${S}/../cfe-${PV}.src ${S}/tools/clang
+    mv ${ORIG_SRC}/cfe-${PV}.src ${ORIG_SRC}/${SRC_DIR}/tools/clang
+  fi
+
+  if [ ! -d "${S}/projects/compiler-rt" ]; then
+    mv ${S}/../compiler-rt-${PV}.src ${S}/projects/compiler-rt
+    mv ${ORIG_SRC}/compiler-rt-${PV}.src ${ORIG_SRC}/${SRC_DIR}/projects/compiler-rt
+  fi
+
+  if [ ! -d "${S}/projects/test-suite" ]; then
+    mv ${S}/../test-suite-${PV}.src ${S}/projects/test-suite
+    mv ${ORIG_SRC}/test-suite-${PV}.src ${ORIG_SRC}/${SRC_DIR}/projects/test-suite
+  fi
+
+  cd ${B}/..
+  patch -N -p0 <../build-fix-clang-filemanager.patch || true
+  patch -N -p0 <../add-default-include-paths.patch || true
+  patch -N -p0 <../fenv.patch || true
+  patch -N -p0 <../googletest_change_isascii.patch || true
+  cd ${B}
+  mgwconf --enable-shared --enable-optimized --enable-targets="x86,cpp" --enable-cxx11 \
+          --with-extra-options="-U__STRICT_ANSI__"
+  mgwmake VERBOSE=1
+}
+
+src_test() {
+  cd ${B}
+  mgwmake check-all VERBOSE=1
+}
+
+src_install() {
+  cd ${B}
+  mgwinstall VERBOSE=1
+
+  rm -rf ${D}/mingw/docs
+
+  # scan-build
+  cd ${S}/tools/clang/tools/scan-build
+  dobin scan-build scan-build.bat
+  doman scan-build.1
+  insinto /mingw/share/clang-analyzer/scan-build
+  doins sorttable.js scanview.css ccc-analyzer c++-analyzer
+
+  # scan-view
+  cd ${S}/tools/clang/tools/scan-view
+  dobin scan-view
+  insinto /mingw/share/clang-analyzer/scan-view
+  doins *.py
+  insinto /mingw/share/clang-analyzer/scan-view/Resources
+  doins Resources/*
+}
+

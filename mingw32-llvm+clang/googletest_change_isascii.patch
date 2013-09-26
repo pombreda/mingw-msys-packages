@@ -1,0 +1,11 @@
+--- origsrc/llvm-3.3.src/utils/unittest/googletest/gtest-printers.cc	2013-02-25 18:11:18 +0000
++++ src/llvm-3.3.src/utils/unittest/googletest/gtest-printers.cc	2013-09-11 15:42:58 +0000
+@@ -288,7 +289,7 @@ static void PrintWideCharsAsStringTo(con
+   bool is_previous_hex = false;
+   for (size_t index = 0; index < len; ++index) {
+     const wchar_t cur = begin[index];
+-    if (is_previous_hex && isascii(cur) && IsXDigit(static_cast<char>(cur))) {
++    if (is_previous_hex && __isascii(cur) && IsXDigit(static_cast<char>(cur))) {
+       // Previous character is of '\x..' form and this character can be
+       // interpreted as another hexadecimal digit in its number. Break string to
+       // disambiguate.

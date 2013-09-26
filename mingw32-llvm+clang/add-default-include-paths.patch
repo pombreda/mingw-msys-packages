@@ -1,0 +1,16 @@
+--- origsrc/llvm-3.3.src/tools/clang/lib/Frontend/InitHeaderSearch.cpp	2013-04-30 01:21:43 +0000
++++ src/llvm-3.3.src/tools/clang/lib/Frontend/InitHeaderSearch.cpp	2013-09-25 18:44:19 +0000
+@@ -400,7 +400,12 @@ AddDefaultCPlusPlusIncludePaths(const ll
+     AddMinGW64CXXPaths(HSOpts.ResourceDir, "4.6.3");
+     AddMinGW64CXXPaths(HSOpts.ResourceDir, "4.7.0");
+     // mingw.org C++ include paths
+-    AddMinGWCPlusPlusIncludePaths("/mingw/lib/gcc", "mingw32", "4.5.2"); //MSYS
++    AddPath(HSOpts.ResourceDir + "/../../../lib/gcc/mingw32/4.7.2/include/c++", CXXSystem, false);
++    AddPath(HSOpts.ResourceDir + "/../../../lib/gcc/mingw32/4.7.2/include/c++/backward", CXXSystem, false);
++    AddPath(HSOpts.ResourceDir + "/../../../lib/gcc/mingw32/4.7.2/include/c++/mingw32", CXXSystem, false);
++    AddPath(HSOpts.ResourceDir + "/../../../lib/gcc/mingw32/4.8.1/include/c++", CXXSystem, false);
++    AddPath(HSOpts.ResourceDir + "/../../../lib/gcc/mingw32/4.8.1/include/c++/backward", CXXSystem, false);
++    AddPath(HSOpts.ResourceDir + "/../../../lib/gcc/mingw32/4.8.1/include/c++/mingw32", CXXSystem, false);
+ #if defined(_WIN32)
+     AddMinGWCPlusPlusIncludePaths("c:/MinGW/lib/gcc", "mingw32", "4.6.2");
+     AddMinGWCPlusPlusIncludePaths("c:/MinGW/lib/gcc", "mingw32", "4.6.1");

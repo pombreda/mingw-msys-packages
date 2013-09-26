@@ -1,0 +1,142 @@
+--- origsrc/llvm-3.3.src/tools/clang/include/clang/Basic/FileManager.h	2013-01-26 00:55:12 +0000
++++ src/llvm-3.3.src/tools/clang/include/clang/Basic/FileManager.h	2013-09-10 17:44:34 +0000
+@@ -31,8 +31,6 @@
+ typedef unsigned short mode_t;
+ #endif
+ 
+-struct stat;
+-
+ namespace llvm {
+ class MemoryBuffer;
+ namespace sys { class Path; }
+@@ -170,7 +168,7 @@ class FileManager : public RefCountedBas
+   // Caching.
+   OwningPtr<FileSystemStatCache> StatCache;
+ 
+-  bool getStatValue(const char *Path, struct stat &StatBuf,
++  bool getStatValue(const char *Path, struct _stat64i32 &StatBuf,
+                     bool isFile, int *FileDescriptor);
+ 
+   /// Add all ancestors of the given path (pointing to either a file
+@@ -244,7 +242,7 @@ public:
+   ///
+   /// If the path is relative, it will be resolved against the WorkingDir of the
+   /// FileManager's FileSystemOptions.
+-  bool getNoncachedStatValue(StringRef Path, struct stat &StatBuf);
++  bool getNoncachedStatValue(StringRef Path, struct _stat64i32 &StatBuf);
+ 
+   /// \brief Remove the real file \p Entry from the cache.
+   void invalidateCache(const FileEntry *Entry);
+--- origsrc/llvm-3.3.src/tools/clang/lib/Basic/FileManager.cpp	2013-01-26 16:29:36 +0000
++++ src/llvm-3.3.src/tools/clang/lib/Basic/FileManager.cpp	2013-09-10 17:44:34 +0000
+@@ -95,7 +95,7 @@ public:
+   /// name if there is already one; otherwise create and return a
+   /// default-constructed DirectoryEntry.
+   DirectoryEntry &getDirectory(const char *Name,
+-                               const struct stat & /*StatBuf*/) {
++                               const struct _stat64i32 & /*StatBuf*/) {
+     std::string FullPath(GetFullPath(Name));
+     return UniqueDirs.GetOrCreateValue(FullPath).getValue();
+   }
+@@ -112,7 +112,7 @@ public:
+   /// getFile - Return an existing FileEntry with the given name if
+   /// there is already one; otherwise create and return a
+   /// default-constructed FileEntry.
+-  FileEntry &getFile(const char *Name, const struct stat & /*StatBuf*/) {
++  FileEntry &getFile(const char *Name, const struct _stat64i32 & /*StatBuf*/) {
+     std::string FullPath(GetFullPath(Name));
+ 
+     // Lowercase string because Windows filesystem is case insensitive.
+@@ -146,7 +146,7 @@ public:
+   /// ID's if there is already one; otherwise create and return a
+   /// default-constructed DirectoryEntry.
+   DirectoryEntry &getDirectory(const char * /*Name*/,
+-                               const struct stat &StatBuf) {
++                               const struct _stat64i32 &StatBuf) {
+     return UniqueDirs[std::make_pair(StatBuf.st_dev, StatBuf.st_ino)];
+   }
+ 
+@@ -161,7 +161,7 @@ public:
+   /// getFile - Return an existing FileEntry with the given ID's if
+   /// there is already one; otherwise create and return a
+   /// default-constructed FileEntry.
+-  FileEntry &getFile(const char * /*Name*/, const struct stat &StatBuf) {
++  FileEntry &getFile(const char * /*Name*/, const struct _stat64i32 &StatBuf) {
+     return
+       const_cast<FileEntry&>(
+                     *UniqueFiles.insert(FileEntry(StatBuf.st_dev,
+@@ -313,7 +313,7 @@ const DirectoryEntry *FileManager::getDi
+   const char *InterndDirName = NamedDirEnt.getKeyData();
+ 
+   // Check to see if the directory exists.
+-  struct stat StatBuf;
++  struct _stat64i32 StatBuf;
+   if (getStatValue(InterndDirName, StatBuf, false, 0/*directory lookup*/)) {
+     // There's no real directory at the given path.
+     if (!CacheFailure)
+@@ -369,22 +369,22 @@ const FileEntry *FileManager::getFile(St
+   if (DirInfo == 0) {  // Directory doesn't exist, file can't exist.
+     if (!CacheFailure)
+       SeenFileEntries.erase(Filename);
+-    
++
+     return 0;
+   }
+-  
++
+   // FIXME: Use the directory info to prune this, before doing the stat syscall.
+   // FIXME: This will reduce the # syscalls.
+ 
+   // Nope, there isn't.  Check to see if the file exists.
+   int FileDescriptor = -1;
+-  struct stat StatBuf;
++  struct _stat64i32 StatBuf;
+   if (getStatValue(InterndFileName, StatBuf, true,
+                    openFile ? &FileDescriptor : 0)) {
+     // There's no real file at the given path.
+     if (!CacheFailure)
+       SeenFileEntries.erase(Filename);
+-    
++
+     return 0;
+   }
+ 
+@@ -448,7 +448,7 @@ FileManager::getVirtualFile(StringRef Fi
+          "The directory of a virtual file should already be in the cache.");
+ 
+   // Check to see if the file exists. If so, drop the virtual file
+-  struct stat StatBuf;
++  struct _stat64i32 StatBuf;
+   const char *InterndFileName = NamedFileEnt.getKeyData();
+   if (getStatValue(InterndFileName, StatBuf, true, 0) == 0) {
+     StatBuf.st_size = Size;
+@@ -488,7 +488,7 @@ FileManager::getVirtualFile(StringRef Fi
+ void FileManager::FixupRelativePath(SmallVectorImpl<char> &path) const {
+   StringRef pathRef(path.data(), path.size());
+ 
+-  if (FileSystemOpts.WorkingDir.empty() 
++  if (FileSystemOpts.WorkingDir.empty()
+       || llvm::sys::path::is_absolute(pathRef))
+     return;
+ 
+@@ -562,7 +562,7 @@ getBufferForFile(StringRef Filename, std
+ /// if the path points to a virtual file or does not exist, or returns
+ /// false if it's an existent real file.  If FileDescriptor is NULL,
+ /// do directory look-up instead of file look-up.
+-bool FileManager::getStatValue(const char *Path, struct stat &StatBuf,
++bool FileManager::getStatValue(const char *Path, struct _stat64i32 &StatBuf,
+                                bool isFile, int *FileDescriptor) {
+   // FIXME: FileSystemOpts shouldn't be passed in here, all paths should be
+   // absolute!
+@@ -577,8 +577,8 @@ bool FileManager::getStatValue(const cha
+                                   isFile, FileDescriptor, StatCache.get());
+ }
+ 
+-bool FileManager::getNoncachedStatValue(StringRef Path, 
+-                                        struct stat &StatBuf) {
++bool FileManager::getNoncachedStatValue(StringRef Path,
++                                        struct _stat64i32 &StatBuf) {
+   SmallString<128> FilePath(Path);
+   FixupRelativePath(FilePath);
+ 
+

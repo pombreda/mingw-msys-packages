@@ -1,0 +1,11 @@
+--- origsrc/llvm-3.2.src/Makefile.config.in	2012-10-01 18:40:32 +0000
++++ src/llvm-3.2.src/Makefile.config.in	2013-05-01 20:21:08 +0000
+@@ -161,7 +161,7 @@ AR_PATH = @AR@
+ AR = @AR@
+
+ # Path to the nm program
+-NM_PATH = @NM@
++NM_PATH = /mingw/bin/nm -B
+
+ # The pathnames of the programs we require to build
+ CMP        := @CMP@
