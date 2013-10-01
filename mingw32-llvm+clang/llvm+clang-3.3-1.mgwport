@@ -73,7 +73,9 @@ src_compile() {
   patch -N -p0 <../add-default-include-paths.patch || true
   patch -N -p0 <../fenv.patch || true
   patch -N -p0 <../googletest_change_isascii.patch || true
+  patch -N -p0 <../clang-MinGWABI.patch || true
   cd ${B}
+
   mgwconf --enable-shared --enable-optimized --enable-targets="x86,cpp" --enable-cxx11 \
           --with-extra-options="-U__STRICT_ANSI__"
   mgwmake VERBOSE=1

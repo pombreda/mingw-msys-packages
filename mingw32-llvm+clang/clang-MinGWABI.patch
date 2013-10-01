@@ -1,0 +1,14 @@
+--- origsrc/llvm-3.3.src/tools/clang/lib/AST/ItaniumCXXABI.cpp	2013-03-28 20:02:56 +0000
++++ src/llvm-3.3.src/tools/clang/lib/AST/ItaniumCXXABI.cpp	2013-09-26 18:15:08 +0000
+@@ -45,7 +45,10 @@ public:
+   }
+ 
+   CallingConv getDefaultMethodCallConv(bool isVariadic) const {
+-    return CC_C;
++    if (!isVariadic && Context.getTargetInfo().getTriple().getArch() == llvm::Triple::x86)
++      return CC_X86ThisCall;
++    else
++      return CC_C;
+   }
+ 
+   // We cheat and just check that the class has a vtable pointer, and that it's
