@@ -1,4 +1,1 @@
-mingw-msys-packages
-===================
-
-Various MinGW/MSYS Packages
+Get binary packages at http://virtuell-zuhause.de/public-downloads/.
